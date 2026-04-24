@@ -264,6 +264,131 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
+  /* Mr. Cousins character */
+  .cousins {
+    position: fixed;
+    bottom: 20px;
+    right: 28px;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    pointer-events: none; /* only figure/bubble are clickable */
+  }
+  .cousins-figure {
+    position: relative;
+    width: 110px;
+    height: 185px;
+    cursor: pointer;
+    pointer-events: auto;
+    color: #e9ecf5;
+    transition: transform 0.18s cubic-bezier(.3,1.4,.5,1);
+    animation: cousins-bob 3.2s ease-in-out infinite;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
+  }
+  .cousins-figure:hover { transform: translateY(-4px) scale(1.04); }
+  .cousins-figure:active { transform: translateY(0) scale(0.98); }
+  .cousins-figure:focus { outline: none; }
+  .cousins-figure:focus-visible .cousins-head {
+    box-shadow: 0 0 0 3px var(--accent), 0 6px 14px rgba(0,0,0,0.35);
+  }
+  @keyframes cousins-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+  }
+  .cousins-body {
+    position: absolute;
+    left: 0; top: 35px;
+    width: 100%;
+    height: auto;
+  }
+  .cousins-head {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center 25%;
+    border: 2.5px solid #e9ecf5;
+    background: #1a1e35;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .cousins-bubble {
+    position: relative;
+    max-width: 340px;
+    background: #fdfaf1;
+    color: #1a1405;
+    padding: 16px 18px;
+    border-radius: 16px;
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08);
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+    transform-origin: bottom right;
+    transition: opacity 0.22s ease, transform 0.22s cubic-bezier(.3,1.4,.5,1);
+    pointer-events: none;
+    margin-bottom: 30px;
+  }
+  .cousins-bubble.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .cousins-bubble::after {
+    content: '';
+    position: absolute;
+    right: -10px;
+    bottom: 24px;
+    width: 0; height: 0;
+    border-left: 12px solid #fdfaf1;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    filter: drop-shadow(1px 0 0 rgba(0,0,0,0.06));
+  }
+  .cousins-bubble .bubble-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #a67c00;
+    margin-bottom: 6px;
+  }
+  .cousins-bubble .bubble-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0 0 8px;
+    color: #1a1405;
+  }
+  .cousins-bubble .bubble-body { color: #3a3220; font-size: 13px; }
+  .cousins-bubble .bubble-body .eq {
+    background: rgba(26, 20, 5, 0.05);
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin: 8px 0 4px;
+    overflow-x: auto;
+    font-size: 12px;
+  }
+  .cousins-bubble .bubble-hint {
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #8a7a50;
+  }
+  @media (max-width: 700px) {
+    .cousins { bottom: 10px; right: 10px; }
+    .cousins-figure { width: 84px; height: 148px; }
+    .cousins-head { width: 40px; height: 40px; }
+    .cousins-bubble { max-width: 220px; font-size: 13px; }
+  }
+
   /* Toggle pills */
   .pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
   .pill {
@@ -402,7 +527,33 @@
 
   <footer>
     Named for Sir Francis Galton (1889). &nbsp;·&nbsp; Simulation runs entirely in your browser. &nbsp;·&nbsp; Try pausing mid-fall.
+    <br/>
+    <span style="color:var(--ink-dim)">Commissioned by <b style="color:var(--ink)">Mr. Cousins</b> — click him in the corner for a math fact.</span>
   </footer>
+</div>
+
+<!-- Mr. Cousins, math teacher at large -->
+<div id="cousins" class="cousins" title="Click Mr. Cousins for a math fact">
+  <div class="cousins-bubble" id="cousinsBubble" aria-live="polite"></div>
+  <div class="cousins-figure" role="button" tabindex="0" aria-label="Click Mr. Cousins for a math fact">
+    <svg class="cousins-body" viewBox="0 0 80 140" xmlns="http://www.w3.org/2000/svg">
+      <!-- Neck -->
+      <line x1="40" y1="32" x2="40" y2="44" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Torso -->
+      <line x1="40" y1="44" x2="40" y2="92" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Arms -->
+      <line x1="40" y1="56" x2="14" y2="74" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="40" y1="56" x2="66" y2="74" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Chalk in right hand -->
+      <line x1="66" y1="74" x2="72" y2="70" stroke="#ffc857" stroke-width="3" stroke-linecap="round"/>
+      <!-- Legs -->
+      <line x1="40" y1="92" x2="22" y2="132" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="40" y1="92" x2="58" y2="132" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Ground shadow -->
+      <ellipse cx="40" cy="136" rx="22" ry="2.5" fill="rgba(0,0,0,0.3)"/>
+    </svg>
+    <img class="cousins-head" src="cousins.jpg" alt="Mr. Cousins" draggable="false"/>
+  </div>
 </div>
 
 <script>
@@ -1070,6 +1221,97 @@
   wire();
   resize();
   requestAnimationFrame((t) => { lastT = t; loop(t); });
+})();
+
+// ============================================================
+// Mr. Cousins — clickable math-teacher sidekick
+// ============================================================
+(() => {
+  const facts = [
+    {
+      tag: '01 · The coin flip',
+      title: 'Each peg is a Bernoulli trial',
+      body: `When a ball hits a peg, it goes right with probability $p$ or left with probability $1-p$. That single bounce is a <strong>Bernoulli trial</strong>:
+        <div class="eq">$$X_i = \\begin{cases} 1 & \\text{prob. } p \\\\ 0 & \\text{prob. } 1-p \\end{cases}$$</div>
+        Every peg is independent — the ball has no memory.`
+    },
+    {
+      tag: '02 · Sum of bounces',
+      title: 'Final column = number of rights',
+      body: `After $n$ rows, the ball's column $k$ is the total count of right-bounces. A sum of independent Bernoullis is, by definition, <strong>binomial</strong>:
+        <div class="eq">$$K \\sim \\text{Binomial}(n, p)$$</div>
+        <div class="eq">$$P(K=k) = \\binom{n}{k} p^k (1-p)^{n-k}$$</div>`
+    },
+    {
+      tag: "03 · Pascal's triangle",
+      title: 'The counting in the pegs',
+      body: `How many paths lead to column $k$? Exactly $\\binom{n}{k}$ — the same rule that builds Pascal's triangle. The middle column has the most paths, which is why the middle bin fills fastest.`
+    },
+    {
+      tag: '04 · Expected value',
+      title: 'Where a ball lands, on average',
+      body: `From the sum-of-Bernoullis:
+        <div class="eq">$$\\mathbb{E}[K] = np, \\quad \\text{Var}(K) = np(1-p)$$</div>
+        Double $n$, and the width $\\sigma = \\sqrt{np(1-p)}$ grows by only $\\sqrt{2}$ — the curve gets <em>relatively</em> tighter.`
+    },
+    {
+      tag: '05 · The Central Limit Theorem',
+      title: 'Why it is always a bell curve',
+      body: `As $n$ grows, the binomial converges to a normal distribution — the <strong>De Moivre–Laplace theorem</strong>, the oldest case of the CLT:
+        <div class="eq">$$\\text{Binomial}(n, p) \\xrightarrow{n \\to \\infty} \\mathcal{N}(np, np(1-p))$$</div>
+        The astonishing part: this works for <em>any</em> finite-variance bounce distribution.`
+    },
+    {
+      tag: '06 · Try it',
+      title: 'Things to notice',
+      body: `<strong>Slide $p$ away from 0.5</strong> — the peak shifts to $np$.<br/>
+             <strong>Add rows</strong> — the curve widens absolutely, tightens relatively.<br/>
+             <strong>Drop 100 at once</strong> — watch the histogram flicker around the theoretical curve. The χ² readout measures the fit.`
+    },
+  ];
+
+  const figure = document.querySelector('.cousins-figure');
+  const bubble = document.getElementById('cousinsBubble');
+  let idx = -1;
+  let hideTimer = null;
+
+  function showFact(i) {
+    const f = facts[i];
+    bubble.innerHTML = `
+      <span class="bubble-tag">${f.tag}</span>
+      <div class="bubble-title">${f.title}</div>
+      <div class="bubble-body">${f.body}</div>
+      <div class="bubble-hint">click me again for the next fact</div>
+    `;
+    bubble.classList.add('visible');
+    // Ask MathJax to typeset the new content
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([bubble]).catch(() => {});
+    }
+    // Auto-hide after a while of no interaction
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => bubble.classList.remove('visible'), 16000);
+  }
+
+  function advance() {
+    idx = (idx + 1) % facts.length;
+    showFact(idx);
+  }
+
+  figure.addEventListener('click', advance);
+  figure.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      advance();
+    }
+  });
+
+  // Dismiss the bubble when clicking elsewhere
+  document.addEventListener('click', (e) => {
+    if (!figure.contains(e.target) && !bubble.contains(e.target)) {
+      bubble.classList.remove('visible');
+    }
+  });
 })();
 </script>
 </body>
