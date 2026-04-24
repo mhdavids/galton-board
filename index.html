@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Galton Board — The Bean Machine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,800;1,400&family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script>
+  MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+  :root {
+    --bg-0: #0b0d17;
+    --bg-1: #111425;
+    --bg-2: #1a1e35;
+    --ink: #e9ecf5;
+    --ink-dim: #a4aac2;
+    --ink-faint: #6c7290;
+    --accent: #ffc857;
+    --accent-2: #ff7a90;
+    --accent-3: #7ad3ff;
+    --good: #9ae6b4;
+    --line: rgba(255,255,255,0.08);
+    --peg: #c9cde0;
+    --ball: #ffc857;
+    --shadow: 0 10px 40px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(ellipse at top, #161a32 0%, var(--bg-0) 60%);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 48px 32px 80px;
+  }
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-size: clamp(40px, 6vw, 72px);
+    line-height: 1.02;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+  h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+  }
+  .tagline {
+    color: var(--ink-dim);
+    font-size: 17px;
+    max-width: 640px;
+    line-height: 1.5;
+  }
+  .board-shell {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .board-shell { grid-template-columns: 1fr; }
+  }
+  .stage {
+    position: relative;
+    background: linear-gradient(180deg, var(--bg-1) 0%, #0c0f1d 100%);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    aspect-ratio: 3 / 4;
+    min-height: 560px;
+  }
+  canvas#board {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .stage .corner {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 10px 14px;
+    pointer-events: none;
+  }
+  .corner.tl { top: 0; left: 0; }
+  .corner.tr { top: 0; right: 0; }
+  .stats-bar {
+    position: absolute;
+    bottom: 12px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-dim);
+    pointer-events: none;
+  }
+  .stats-bar span b { color: var(--ink); font-weight: 600; }
+
+  .panel {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .panel + .panel { margin-top: 16px; }
+  .panel h3 {
+    margin: 0 0 14px;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+  }
+  .controls label {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-dim);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .controls label b {
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .controls input[type=range] {
+    width: 100%;
+    accent-color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    color: var(--ink);
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  button:hover { background: #22284a; border-color: rgba(255,255,255,0.18); }
+  button.primary {
+    background: var(--accent);
+    color: #1a1405;
+    border-color: var(--accent);
+  }
+  button.primary:hover { background: #ffd271; }
+  button.wide { grid-column: span 2; }
+
+  .metric {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .metric:last-child { border-bottom: 0; }
+  .metric .k { color: var(--ink-dim); }
+  .metric .v { color: var(--ink); font-weight: 600; }
+
+  .math-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 40px;
+  }
+  .math-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .math-card .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .math-card h4 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 20px;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  .math-card p {
+    color: var(--ink-dim);
+    line-height: 1.6;
+    font-size: 14px;
+    margin: 0 0 10px;
+  }
+  .math-card .eq {
+    background: rgba(122, 211, 255, 0.05);
+    border-left: 2px solid var(--accent-3);
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .pascal {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.8;
+    color: var(--ink-dim);
+    margin: 10px 0;
+  }
+  .pascal .row { white-space: nowrap; }
+  .pascal b { color: var(--accent); font-weight: 600; }
+
+  footer {
+    text-align: center;
+    margin-top: 60px;
+    color: var(--ink-faint);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Toggle pills */
+  .pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-dim);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .pill.active {
+    background: var(--accent);
+    color: #1a1405;
+    border-color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hero">
+    <div class="eyebrow">Probability · Live Simulation</div>
+    <h1>The <em>Galton</em> Board</h1>
+    <p class="tagline">A ball falls through a lattice of pegs, taking a random left or right at each row. Thousands of balls, stacked into columns, carve out a bell curve — <em>the Central Limit Theorem, visible.</em></p>
+  </header>
+
+  <div class="board-shell">
+    <div class="stage">
+      <div class="corner tl">n = <span id="rowReadout">14</span> rows · p = <span id="probReadout">0.50</span></div>
+      <div class="corner tr" id="liveCount">0 balls</div>
+      <canvas id="board"></canvas>
+      <div class="stats-bar">
+        <span>μ = <b id="muEmp">—</b> <span style="color:var(--ink-faint)">(theory <b id="muTh">—</b>)</span></span>
+        <span>σ = <b id="sigmaEmp">—</b> <span style="color:var(--ink-faint)">(theory <b id="sigmaTh">—</b>)</span></span>
+      </div>
+    </div>
+
+    <aside>
+      <div class="panel controls">
+        <h3>Controls</h3>
+        <label>Rows of pegs <b><span id="rowsVal">14</span></b></label>
+        <input id="rows" type="range" min="5" max="20" value="14" />
+
+        <label>Probability of right <b><span id="probVal">0.50</span></b></label>
+        <input id="prob" type="range" min="0" max="1" step="0.01" value="0.50" />
+
+        <label>Drop rate <b><span id="rateVal">6</span>/s</b></label>
+        <input id="rate" type="range" min="1" max="40" value="6" />
+
+        <label>Ball bounciness <b><span id="bounceVal">0.35</span></b></label>
+        <input id="bounce" type="range" min="0" max="0.9" step="0.01" value="0.35" />
+
+        <div class="pill-row" style="margin-top:6px">
+          <button class="pill active" data-overlay="binomial">Binomial PMF</button>
+          <button class="pill" data-overlay="normal">Normal curve</button>
+          <button class="pill" data-overlay="none">Hide overlay</button>
+        </div>
+
+        <div class="btn-row">
+          <button id="toggleBtn" class="primary wide">Pause</button>
+          <button id="burstBtn">Drop 100</button>
+          <button id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Live Statistics</h3>
+        <div class="metric"><span class="k">balls landed</span><span class="v" id="statN">0</span></div>
+        <div class="metric"><span class="k">empirical mean</span><span class="v" id="statMean">—</span></div>
+        <div class="metric"><span class="k">empirical σ</span><span class="v" id="statSd">—</span></div>
+        <div class="metric"><span class="k">modal bin</span><span class="v" id="statMode">—</span></div>
+        <div class="metric"><span class="k">χ² vs binomial</span><span class="v" id="statChi">—</span></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="math-grid">
+    <div class="math-card">
+      <span class="tag">01 · The coin flip</span>
+      <h4>Each peg is a Bernoulli trial</h4>
+      <p>When a ball hits a peg, it goes right with probability $p$ or left with probability $1-p$. That single bounce is a <strong>Bernoulli trial</strong> — a random variable taking value $1$ or $0$:</p>
+      <div class="eq">$$X_i = \begin{cases} 1 & \text{with probability } p \\ 0 & \text{with probability } 1-p \end{cases}$$</div>
+      <p>Each peg is independent of the others. The ball has no memory of where it has been.</p>
+    </div>
+
+    <div class="math-card">
+      <span class="tag">02 · Sum of bounces</span>
+      <h4>Final column = number of rights</h4>
+      <p>After $n$ rows, the ball lands in column $k$, where $k$ is the total count of right-bounces. That's a sum of independent Bernoulli variables — by definition, a <strong>binomial random variable</strong>:</p>
+      <div class="eq">$$K = X_1 + X_2 + \cdots + X_n \sim \text{Binomial}(n, p)$$</div>
+      <p>So the probability a ball lands in column $k$ is given exactly by the binomial PMF:</p>
+      <div class="eq">$$P(K=k) = \binom{n}{k} p^k (1-p)^{n-k}$$</div>
+    </div>
+
+    <div class="math-card">
+      <span class="tag">03 · Pascal's triangle</span>
+      <h4>The counting in the pegs</h4>
+      <p>How many distinct <em>paths</em> lead to column $k$? Exactly $\binom{n}{k}$ — the same number of ways to choose which $k$ of the $n$ bounces went right. If you label the pegs with path counts, you get Pascal's triangle:</p>
+      <div class="pascal">
+        <div class="row">1</div>
+        <div class="row">1 &nbsp; 1</div>
+        <div class="row">1 &nbsp; 2 &nbsp; 1</div>
+        <div class="row">1 &nbsp; 3 &nbsp; 3 &nbsp; 1</div>
+        <div class="row">1 &nbsp; 4 &nbsp; <b>6</b> &nbsp; 4 &nbsp; 1</div>
+        <div class="row">1 &nbsp; 5 &nbsp; 10 &nbsp; 10 &nbsp; 5 &nbsp; 1</div>
+      </div>
+      <p>The middle column always has the most paths — which is why the middle bin fills fastest.</p>
+    </div>
+
+    <div class="math-card">
+      <span class="tag">04 · Expected value</span>
+      <h4>Where the ball lands, on average</h4>
+      <p>The expected column and its variance follow directly from the sum-of-Bernoullis:</p>
+      <div class="eq">$$\mathbb{E}[K] = np, \qquad \text{Var}(K) = np(1-p)$$</div>
+      <p>The standard deviation $\sigma = \sqrt{np(1-p)}$ tells you how wide the bell is. Double $n$, and width grows by only $\sqrt{2}$ — the curve gets <em>relatively</em> tighter.</p>
+    </div>
+
+    <div class="math-card">
+      <span class="tag">05 · The Central Limit Theorem</span>
+      <h4>Why it's always a bell curve</h4>
+      <p>As $n$ grows, the binomial distribution converges to a normal distribution. This is the <strong>De Moivre–Laplace theorem</strong> — the first, and oldest, case of the Central Limit Theorem:</p>
+      <div class="eq">$$\text{Binomial}(n, p) \;\xrightarrow{n \to \infty}\; \mathcal{N}\bigl(np,\; np(1-p)\bigr)$$</div>
+      <p>The astonishing fact: this works for <em>any</em> distribution of the individual bounces, so long as they have finite variance. Sum enough of them, and you get a bell. The Galton board is the cleanest demo of the most important theorem in statistics.</p>
+    </div>
+
+    <div class="math-card">
+      <span class="tag">06 · Try it</span>
+      <h4>Things to notice</h4>
+      <p><strong>Slide $p$ away from $0.5$.</strong> The peak shifts to $np$ and the distribution gets skewed — but only a little. The normal approximation forgives asymmetry.</p>
+      <p><strong>Add rows.</strong> The distribution widens in absolute terms but tightens relative to its mean. That's the law of large numbers hiding inside.</p>
+      <p><strong>Drop 100 at once.</strong> Watch the histogram fluctuate around the theoretical curve. The χ² readout measures how close it is to the ideal binomial.</p>
+    </div>
+  </section>
+
+  <footer>
+    Named for Sir Francis Galton (1889). &nbsp;·&nbsp; Simulation runs entirely in your browser. &nbsp;·&nbsp; Try pausing mid-fall.
+  </footer>
+</div>
+
+<script>
+// ============================================================
+// Galton Board — physics-lite simulation + live stats
+// ============================================================
+(() => {
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+
+  const state = {
+    rows: 14,
+    p: 0.5,
+    rate: 6,         // balls per second
+    bounce: 0.35,
+    paused: false,
+    overlay: 'binomial',
+    balls: [],
+    bins: [],        // landed counts
+    totalLanded: 0,
+    lastDropTime: 0,
+    dropAccumulator: 0,
+    W: 0, H: 0, dpr: 1,
+    pegPositions: [],
+    binRects: [],
+    pegRadius: 4,
+    ballRadius: 4,
+    gravity: 0.32,
+    histMax: 1,
+  };
+
+  // ---------- Layout ----------
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    state.W = rect.width;
+    state.H = rect.height;
+    state.dpr = dpr;
+    rebuildGeometry();
+  }
+
+  function rebuildGeometry() {
+    const n = state.rows;
+    const nBins = n + 1;
+    const W = state.W;
+    const H = state.H;
+
+    // Regions: top funnel (10%), peg field (55%), bins (30%), axis gap (5%)
+    const topPad = H * 0.08;
+    const pegFieldTop = topPad;
+    const pegFieldH = H * 0.55;
+    const binsTop = topPad + pegFieldH + H * 0.02;
+    const binsH = H - binsTop - H * 0.03;
+
+    // Peg spacing
+    const rowSpacing = pegFieldH / (n + 1);
+    const colSpacing = Math.min(rowSpacing * 0.95, (W * 0.9) / (n + 1));
+    const pegR = Math.max(2, Math.min(5, colSpacing * 0.14));
+    state.pegRadius = pegR;
+    state.ballRadius = Math.max(2.5, pegR * 1.0);
+
+    const cx = W / 2;
+    state.pegPositions = [];
+    for (let r = 0; r < n; r++) {
+      const y = pegFieldTop + rowSpacing * (r + 1);
+      const count = r + 1;
+      const rowStartX = cx - (count - 1) * 0.5 * colSpacing;
+      for (let i = 0; i < count; i++) {
+        state.pegPositions.push({
+          x: rowStartX + i * colSpacing,
+          y: y,
+          row: r,
+          col: i,
+        });
+      }
+    }
+
+    // Bin geometry: nBins bins centered below pegs
+    state.binRects = [];
+    const binSpacing = colSpacing;
+    const binsStartX = cx - (nBins - 1) * 0.5 * binSpacing;
+    const binW = binSpacing * 0.9;
+    for (let b = 0; b < nBins; b++) {
+      state.binRects.push({
+        x: binsStartX + b * binSpacing - binW / 2,
+        y: binsTop,
+        w: binW,
+        h: binsH,
+        centerX: binsStartX + b * binSpacing,
+        index: b,
+      });
+    }
+
+    // Reset bins if size changed
+    if (state.bins.length !== nBins) {
+      state.bins = new Array(nBins).fill(0);
+      state.totalLanded = 0;
+      state.balls = [];
+      state.histMax = 1;
+    }
+
+    state.spawnX = cx;
+    state.spawnY = Math.max(10, pegFieldTop - H * 0.04);
+    state.rowSpacing = rowSpacing;
+    state.colSpacing = colSpacing;
+    state.pegFieldTop = pegFieldTop;
+    state.pegFieldH = pegFieldH;
+    state.binsTop = binsTop;
+    state.binsH = binsH;
+  }
+
+  // ---------- Balls ----------
+  function spawnBall() {
+    // Choose final bin path deterministically (true binomial) for correctness
+    // but use physics for motion. Steps determine peg-by-peg bias.
+    const n = state.rows;
+    const steps = [];
+    let rights = 0;
+    for (let i = 0; i < n; i++) {
+      const right = Math.random() < state.p;
+      steps.push(right ? 1 : -1);
+      if (right) rights++;
+    }
+    state.balls.push({
+      x: state.spawnX + (Math.random() - 0.5) * 2,
+      y: state.spawnY,
+      vx: 0,
+      vy: 0,
+      steps,
+      nextStep: 0,
+      finalBin: rights,
+      landed: false,
+      hue: 38 + Math.random() * 8, // gold-ish
+      trail: [],
+    });
+  }
+
+  function burst(k) {
+    for (let i = 0; i < k; i++) spawnBall();
+  }
+
+  // ---------- Physics update ----------
+  function updateBalls(dt) {
+    const g = state.gravity;
+    const rs = state.rowSpacing;
+    const cs = state.colSpacing;
+    const pegR = state.pegRadius;
+    const ballR = state.ballRadius;
+    const damping = 0.985;
+
+    for (const ball of state.balls) {
+      if (ball.landed) {
+        // Balls that have landed disappear (we increment bin count on landing)
+        continue;
+      }
+
+      ball.vy += g;
+      ball.vx *= damping;
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      // Determine current peg row based on y
+      const relY = ball.y - state.pegFieldTop;
+      if (ball.nextStep < state.rows) {
+        const targetRowY = state.pegFieldTop + rs * (ball.nextStep + 1);
+        // Check if ball crossed this row
+        if (ball.y >= targetRowY - pegR - ballR * 0.5) {
+          // Bounce off this row's peg
+          const step = ball.steps[ball.nextStep];
+          // Impart lateral velocity pushing in step direction
+          const push = cs * 0.5;
+          // Target x = current peg column + step * half-spacing
+          // For simplicity, give velocity impulse
+          ball.vx += step * (0.9 + Math.random() * 0.3) * 1.4;
+          ball.vy = -Math.abs(ball.vy) * state.bounce + 0.5;
+          // Small randomization
+          ball.vx += (Math.random() - 0.5) * 0.3;
+          ball.nextStep++;
+        }
+      } else {
+        // After last peg, steer gently toward final bin center
+        const targetX = state.binRects[ball.finalBin].centerX;
+        const dx = targetX - ball.x;
+        ball.vx += dx * 0.04;
+        ball.vx *= 0.9;
+
+        // Check bin walls (left and right of its bin)
+        const bin = state.binRects[ball.finalBin];
+        if (ball.x < bin.x + ballR) { ball.x = bin.x + ballR; ball.vx = Math.abs(ball.vx) * 0.4; }
+        if (ball.x > bin.x + bin.w - ballR) { ball.x = bin.x + bin.w - ballR; ball.vx = -Math.abs(ball.vx) * 0.4; }
+
+        // Check landing (stack on top of existing balls in bin)
+        const stackHeight = computeStackHeight(ball.finalBin);
+        const landingY = state.binsTop + state.binsH - stackHeight - ballR;
+        if (ball.y >= landingY) {
+          ball.y = landingY;
+          ball.landed = true;
+          state.bins[ball.finalBin]++;
+          state.totalLanded++;
+          if (state.bins[ball.finalBin] > state.histMax) {
+            state.histMax = state.bins[ball.finalBin];
+          }
+        }
+      }
+
+      // Keep inside horizontal bounds (safety)
+      if (ball.x < 4) { ball.x = 4; ball.vx = Math.abs(ball.vx); }
+      if (ball.x > state.W - 4) { ball.x = state.W - 4; ball.vx = -Math.abs(ball.vx); }
+    }
+
+    // Remove landed balls (they are represented by the histogram column instead)
+    state.balls = state.balls.filter(b => !b.landed);
+  }
+
+  function computeStackHeight(binIdx) {
+    // Visual height allocated to stacked balls in bin
+    const count = state.bins[binIdx];
+    const max = Math.max(1, state.histMax);
+    const maxH = state.binsH * 0.92;
+    return (count / max) * maxH;
+  }
+
+  // ---------- Rendering ----------
+  function draw() {
+    ctx.clearRect(0, 0, state.W, state.H);
+
+    // Subtle vertical center line
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.setLineDash([2, 6]);
+    ctx.beginPath();
+    ctx.moveTo(state.W / 2, 0);
+    ctx.lineTo(state.W / 2, state.H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Overlay (theoretical curve) — draw behind bins for context
+    drawOverlay();
+
+    // Draw bins
+    drawBins();
+
+    // Draw pegs
+    drawPegs();
+
+    // Draw balls
+    drawBalls();
+
+    // Draw funnel at top
+    drawFunnel();
+  }
+
+  function drawFunnel() {
+    const cx = state.W / 2;
+    const y = state.spawnY;
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 24, y - 18);
+    ctx.lineTo(cx - 6, y + 2);
+    ctx.moveTo(cx + 24, y - 18);
+    ctx.lineTo(cx + 6, y + 2);
+    ctx.stroke();
+  }
+
+  function drawPegs() {
+    const r = state.pegRadius;
+    for (const peg of state.pegPositions) {
+      // Soft glow
+      const grad = ctx.createRadialGradient(peg.x, peg.y, 0, peg.x, peg.y, r * 3);
+      grad.addColorStop(0, 'rgba(201,205,224,0.18)');
+      grad.addColorStop(1, 'rgba(201,205,224,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(peg.x, peg.y, r * 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Peg body
+      ctx.fillStyle = '#d4d7ea';
+      ctx.beginPath();
+      ctx.arc(peg.x, peg.y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath();
+      ctx.arc(peg.x - r * 0.3, peg.y - r * 0.3, r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawBalls() {
+    const r = state.ballRadius;
+    for (const ball of state.balls) {
+      // Trail
+      ball.trail.push({ x: ball.x, y: ball.y });
+      if (ball.trail.length > 8) ball.trail.shift();
+      for (let i = 0; i < ball.trail.length; i++) {
+        const t = ball.trail[i];
+        const a = (i / ball.trail.length) * 0.25;
+        ctx.fillStyle = `rgba(255, 200, 87, ${a})`;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, r * (0.5 + 0.5 * (i / ball.trail.length)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Glow
+      const g = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, r * 2.5);
+      g.addColorStop(0, 'rgba(255, 200, 87, 0.45)');
+      g.addColorStop(1, 'rgba(255, 200, 87, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, r * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ball body
+      ctx.fillStyle = `hsl(${ball.hue}, 95%, 60%)`;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath();
+      ctx.arc(ball.x - r * 0.3, ball.y - r * 0.3, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawBins() {
+    const max = Math.max(1, state.histMax);
+    for (const bin of state.binRects) {
+      // Bin background
+      ctx.fillStyle = 'rgba(255,255,255,0.025)';
+      ctx.fillRect(bin.x, bin.y, bin.w, bin.h);
+
+      // Histogram fill
+      const count = state.bins[bin.index];
+      const maxH = bin.h * 0.92;
+      const h = (count / max) * maxH;
+      const y = bin.y + bin.h - h;
+
+      // Gradient fill
+      const grad = ctx.createLinearGradient(0, y, 0, bin.y + bin.h);
+      grad.addColorStop(0, 'rgba(255, 200, 87, 0.95)');
+      grad.addColorStop(1, 'rgba(255, 122, 144, 0.85)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(bin.x, y, bin.w, h);
+
+      // Top line
+      if (h > 0) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(bin.x, y);
+        ctx.lineTo(bin.x + bin.w, y);
+        ctx.stroke();
+      }
+
+      // Count label on tall bins
+      if (count > 0 && h > 16) {
+        ctx.fillStyle = 'rgba(20, 15, 5, 0.75)';
+        ctx.font = '10px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(count, bin.centerX, y + 12);
+      }
+
+      // Bin index label at bottom
+      ctx.fillStyle = 'rgba(164,170,194,0.55)';
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(bin.index, bin.centerX, bin.y + bin.h + 10);
+    }
+  }
+
+  function drawOverlay() {
+    if (state.overlay === 'none' || state.totalLanded < 1) return;
+    const n = state.rows;
+    const p = state.p;
+    const nBins = n + 1;
+    const N = state.totalLanded;
+    const max = Math.max(1, state.histMax);
+    const maxH = state.binsH * 0.92;
+
+    // Theoretical PMF values scaled to same scale as histogram
+    // We scale expected count per bin: N * P(K=k), and show as curve
+    const pts = [];
+    if (state.overlay === 'binomial') {
+      for (let k = 0; k < nBins; k++) {
+        const pk = binomPMF(n, k, p);
+        const expected = N * pk;
+        const yVal = (expected / max) * maxH;
+        const x = state.binRects[k].centerX;
+        const y = state.binsTop + state.binsH - yVal;
+        pts.push({ x, y });
+      }
+    } else if (state.overlay === 'normal') {
+      const mu = n * p;
+      const sigma = Math.sqrt(n * p * (1 - p));
+      // Plot continuous curve across bins
+      const samples = 80;
+      for (let i = 0; i <= samples; i++) {
+        const k = (i / samples) * n;
+        const xPix = state.binRects[0].centerX + (k / n) * (state.binRects[nBins - 1].centerX - state.binRects[0].centerX);
+        const pdf = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * ((k - mu) / sigma) ** 2);
+        const expected = N * pdf;
+        const yVal = (expected / max) * maxH;
+        const y = state.binsTop + state.binsH - yVal;
+        pts.push({ x: xPix, y });
+      }
+    }
+
+    // Smooth-ish curve
+    ctx.strokeStyle = 'rgba(122, 211, 255, 0.75)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
+      else ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+
+    // Dots at each bin if binomial
+    if (state.overlay === 'binomial') {
+      ctx.fillStyle = 'rgba(122, 211, 255, 0.9)';
+      for (const pt of pts) {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // ---------- Math helpers ----------
+  function logGamma(z) {
+    // Lanczos approx
+    const g = 7;
+    const c = [
+      0.99999999999980993,
+      676.5203681218851,
+      -1259.1392167224028,
+      771.32342877765313,
+      -176.61502916214059,
+      12.507343278686905,
+      -0.13857109526572012,
+      9.9843695780195716e-6,
+      1.5056327351493116e-7,
+    ];
+    if (z < 0.5) {
+      return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
+    }
+    z -= 1;
+    let x = c[0];
+    for (let i = 1; i < g + 2; i++) x += c[i] / (z + i);
+    const t = z + g + 0.5;
+    return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+  }
+  function logChoose(n, k) {
+    return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1);
+  }
+  function binomPMF(n, k, p) {
+    if (k < 0 || k > n) return 0;
+    if (p === 0) return k === 0 ? 1 : 0;
+    if (p === 1) return k === n ? 1 : 0;
+    const lp = logChoose(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p);
+    return Math.exp(lp);
+  }
+
+  // ---------- Stats ----------
+  function updateStats() {
+    const n = state.rows;
+    const p = state.p;
+    const N = state.totalLanded;
+    const muTh = n * p;
+    const sigmaTh = Math.sqrt(n * p * (1 - p));
+
+    document.getElementById('muTh').textContent = muTh.toFixed(2);
+    document.getElementById('sigmaTh').textContent = sigmaTh.toFixed(2);
+    document.getElementById('liveCount').textContent = `${N} balls`;
+    document.getElementById('statN').textContent = N;
+
+    if (N < 2) {
+      document.getElementById('muEmp').textContent = '—';
+      document.getElementById('sigmaEmp').textContent = '—';
+      document.getElementById('statMean').textContent = '—';
+      document.getElementById('statSd').textContent = '—';
+      document.getElementById('statMode').textContent = '—';
+      document.getElementById('statChi').textContent = '—';
+      return;
+    }
+
+    let sum = 0, sumSq = 0, modeIdx = 0, modeVal = -1;
+    for (let k = 0; k < state.bins.length; k++) {
+      sum += k * state.bins[k];
+      sumSq += k * k * state.bins[k];
+      if (state.bins[k] > modeVal) { modeVal = state.bins[k]; modeIdx = k; }
+    }
+    const mean = sum / N;
+    const variance = sumSq / N - mean * mean;
+    const sd = Math.sqrt(Math.max(0, variance));
+
+    document.getElementById('muEmp').textContent = mean.toFixed(2);
+    document.getElementById('sigmaEmp').textContent = sd.toFixed(2);
+    document.getElementById('statMean').textContent = mean.toFixed(3);
+    document.getElementById('statSd').textContent = sd.toFixed(3);
+    document.getElementById('statMode').textContent = `bin ${modeIdx}`;
+
+    // Chi-squared vs binomial
+    let chi = 0, usedBins = 0;
+    for (let k = 0; k < state.bins.length; k++) {
+      const expected = N * binomPMF(n, k, p);
+      if (expected >= 1) {
+        chi += (state.bins[k] - expected) ** 2 / expected;
+        usedBins++;
+      }
+    }
+    document.getElementById('statChi').textContent = N >= 20 ? chi.toFixed(2) : '…';
+  }
+
+  // ---------- Main loop ----------
+  let lastT = performance.now();
+  function loop(t) {
+    const dt = Math.min(50, t - lastT);
+    lastT = t;
+
+    if (!state.paused) {
+      // spawn balls according to rate
+      state.dropAccumulator += (state.rate * dt) / 1000;
+      while (state.dropAccumulator >= 1) {
+        spawnBall();
+        state.dropAccumulator -= 1;
+      }
+      updateBalls(dt);
+    }
+
+    draw();
+    updateStats();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- UI wiring ----------
+  function wire() {
+    const rowsEl = document.getElementById('rows');
+    const probEl = document.getElementById('prob');
+    const rateEl = document.getElementById('rate');
+    const bounceEl = document.getElementById('bounce');
+
+    rowsEl.addEventListener('input', () => {
+      state.rows = +rowsEl.value;
+      document.getElementById('rowsVal').textContent = state.rows;
+      document.getElementById('rowReadout').textContent = state.rows;
+      state.bins = new Array(state.rows + 1).fill(0);
+      state.totalLanded = 0;
+      state.balls = [];
+      state.histMax = 1;
+      rebuildGeometry();
+    });
+    probEl.addEventListener('input', () => {
+      state.p = +probEl.value;
+      document.getElementById('probVal').textContent = state.p.toFixed(2);
+      document.getElementById('probReadout').textContent = state.p.toFixed(2);
+    });
+    rateEl.addEventListener('input', () => {
+      state.rate = +rateEl.value;
+      document.getElementById('rateVal').textContent = state.rate;
+    });
+    bounceEl.addEventListener('input', () => {
+      state.bounce = +bounceEl.value;
+      document.getElementById('bounceVal').textContent = state.bounce.toFixed(2);
+    });
+
+    document.getElementById('toggleBtn').addEventListener('click', (e) => {
+      state.paused = !state.paused;
+      e.target.textContent = state.paused ? 'Resume' : 'Pause';
+    });
+    document.getElementById('burstBtn').addEventListener('click', () => {
+      burst(100);
+    });
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      state.bins = new Array(state.rows + 1).fill(0);
+      state.totalLanded = 0;
+      state.balls = [];
+      state.histMax = 1;
+    });
+
+    document.querySelectorAll('.pill[data-overlay]').forEach(p => {
+      p.addEventListener('click', () => {
+        document.querySelectorAll('.pill[data-overlay]').forEach(q => q.classList.remove('active'));
+        p.classList.add('active');
+        state.overlay = p.dataset.overlay;
+      });
+    });
+
+    window.addEventListener('resize', resize);
+  }
+
+  // ---------- Boot ----------
+  wire();
+  resize();
+  requestAnimationFrame((t) => { lastT = t; loop(t); });
+})();
+</script>
+</body>
+</html>
