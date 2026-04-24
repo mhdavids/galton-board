@@ -278,7 +278,7 @@
   .cousins-figure {
     position: relative;
     width: 110px;
-    height: 185px;
+    height: 205px;
     cursor: pointer;
     pointer-events: auto;
     color: #e9ecf5;
@@ -298,7 +298,7 @@
   }
   .cousins-body {
     position: absolute;
-    left: 0; top: 35px;
+    left: 0; top: 8px;
     width: 100%;
     height: auto;
   }
@@ -384,7 +384,8 @@
   }
   @media (max-width: 700px) {
     .cousins { bottom: 10px; right: 10px; }
-    .cousins-figure { width: 84px; height: 148px; }
+    .cousins-figure { width: 84px; height: 158px; }
+    .cousins-body { top: 6px; }
     .cousins-head { width: 40px; height: 40px; }
     .cousins-bubble { max-width: 220px; font-size: 13px; }
   }
@@ -466,64 +467,6 @@
       </div>
     </aside>
   </div>
-
-  <section class="math-grid">
-    <div class="math-card">
-      <span class="tag">01 · The coin flip</span>
-      <h4>Each peg is a Bernoulli trial</h4>
-      <p>When a ball hits a peg, it goes right with probability $p$ or left with probability $1-p$. That single bounce is a <strong>Bernoulli trial</strong> — a random variable taking value $1$ or $0$:</p>
-      <div class="eq">$$X_i = \begin{cases} 1 & \text{with probability } p \\ 0 & \text{with probability } 1-p \end{cases}$$</div>
-      <p>Each peg is independent of the others. The ball has no memory of where it has been.</p>
-    </div>
-
-    <div class="math-card">
-      <span class="tag">02 · Sum of bounces</span>
-      <h4>Final column = number of rights</h4>
-      <p>After $n$ rows, the ball lands in column $k$, where $k$ is the total count of right-bounces. That's a sum of independent Bernoulli variables — by definition, a <strong>binomial random variable</strong>:</p>
-      <div class="eq">$$K = X_1 + X_2 + \cdots + X_n \sim \text{Binomial}(n, p)$$</div>
-      <p>So the probability a ball lands in column $k$ is given exactly by the binomial PMF:</p>
-      <div class="eq">$$P(K=k) = \binom{n}{k} p^k (1-p)^{n-k}$$</div>
-    </div>
-
-    <div class="math-card">
-      <span class="tag">03 · Pascal's triangle</span>
-      <h4>The counting in the pegs</h4>
-      <p>How many distinct <em>paths</em> lead to column $k$? Exactly $\binom{n}{k}$ — the same number of ways to choose which $k$ of the $n$ bounces went right. If you label the pegs with path counts, you get Pascal's triangle:</p>
-      <div class="pascal">
-        <div class="row">1</div>
-        <div class="row">1 &nbsp; 1</div>
-        <div class="row">1 &nbsp; 2 &nbsp; 1</div>
-        <div class="row">1 &nbsp; 3 &nbsp; 3 &nbsp; 1</div>
-        <div class="row">1 &nbsp; 4 &nbsp; <b>6</b> &nbsp; 4 &nbsp; 1</div>
-        <div class="row">1 &nbsp; 5 &nbsp; 10 &nbsp; 10 &nbsp; 5 &nbsp; 1</div>
-      </div>
-      <p>The middle column always has the most paths — which is why the middle bin fills fastest.</p>
-    </div>
-
-    <div class="math-card">
-      <span class="tag">04 · Expected value</span>
-      <h4>Where the ball lands, on average</h4>
-      <p>The expected column and its variance follow directly from the sum-of-Bernoullis:</p>
-      <div class="eq">$$\mathbb{E}[K] = np, \qquad \text{Var}(K) = np(1-p)$$</div>
-      <p>The standard deviation $\sigma = \sqrt{np(1-p)}$ tells you how wide the bell is. Double $n$, and width grows by only $\sqrt{2}$ — the curve gets <em>relatively</em> tighter.</p>
-    </div>
-
-    <div class="math-card">
-      <span class="tag">05 · The Central Limit Theorem</span>
-      <h4>Why it's always a bell curve</h4>
-      <p>As $n$ grows, the binomial distribution converges to a normal distribution. This is the <strong>De Moivre–Laplace theorem</strong> — the first, and oldest, case of the Central Limit Theorem:</p>
-      <div class="eq">$$\text{Binomial}(n, p) \;\xrightarrow{n \to \infty}\; \mathcal{N}\bigl(np,\; np(1-p)\bigr)$$</div>
-      <p>The astonishing fact: this works for <em>any</em> distribution of the individual bounces, so long as they have finite variance. Sum enough of them, and you get a bell. The Galton board is the cleanest demo of the most important theorem in statistics.</p>
-    </div>
-
-    <div class="math-card">
-      <span class="tag">06 · Try it</span>
-      <h4>Things to notice</h4>
-      <p><strong>Slide $p$ away from $0.5$.</strong> The peak shifts to $np$ and the distribution gets skewed — but only a little. The normal approximation forgives asymmetry.</p>
-      <p><strong>Add rows.</strong> The distribution widens in absolute terms but tightens relative to its mean. That's the law of large numbers hiding inside.</p>
-      <p><strong>Drop 100 at once.</strong> Watch the histogram fluctuate around the theoretical curve. The χ² readout measures how close it is to the ideal binomial.</p>
-    </div>
-  </section>
 
   <footer>
     Named for Sir Francis Galton (1889). &nbsp;·&nbsp; Simulation runs entirely in your browser. &nbsp;·&nbsp; Try pausing mid-fall.
