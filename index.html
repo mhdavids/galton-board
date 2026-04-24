@@ -515,6 +515,23 @@
     state.pegFieldH = pegFieldH;
     state.binsTop = binsTop;
     state.binsH = binsH;
+
+    // Triangular wall envelope: narrow at top of peg field, widens to bin row.
+    // At row r (y = pegFieldTop + rs*(r+1)) half-width is ~(r+1) * 0.5 * cs.
+    state.wallTopY = state.spawnY;
+    state.wallTopHalfW = colSpacing * 0.35;            // funnel neck
+    state.wallBotY = binsTop;
+    state.wallBotHalfW = (nBins) * 0.5 * colSpacing;   // matches bin row edges
+  }
+
+  // Return the half-width of the allowable corridor at a given y.
+  function corridorHalfWidth(y) {
+    const y0 = state.wallTopY;
+    const y1 = state.wallBotY;
+    if (y <= y0) return state.wallTopHalfW;
+    if (y >= y1) return state.wallBotHalfW;
+    const f = (y - y0) / (y1 - y0);
+    return state.wallTopHalfW + (state.wallBotHalfW - state.wallTopHalfW) * f;
   }
 
   // ---------- Balls ----------
@@ -579,10 +596,10 @@
           const push = cs * 0.5;
           // Target x = current peg column + step * half-spacing
           // For simplicity, give velocity impulse
-          ball.vx += step * (0.9 + Math.random() * 0.3) * 1.4;
+          ball.vx += step * (0.7 + Math.random() * 0.25) * 0.95;
           ball.vy = -Math.abs(ball.vy) * state.bounce + 0.5;
           // Small randomization
-          ball.vx += (Math.random() - 0.5) * 0.3;
+          ball.vx += (Math.random() - 0.5) * 0.25;
           ball.nextStep++;
         }
       } else {
@@ -611,7 +628,29 @@
         }
       }
 
-      // Keep inside horizontal bounds (safety)
+      // Triangular wall containment — keeps balls inside the peg envelope.
+      // Only enforce while ball is traveling through the peg field / above bins.
+      if (ball.y >= state.wallTopY && ball.y <= state.wallBotY + 2) {
+        const cx = state.W / 2;
+        const half = corridorHalfWidth(ball.y) - ballR;
+        // Slope of the wall (dx/dy) — used so reflection kills the outward component.
+        const slope = (state.wallBotHalfW - state.wallTopHalfW) / (state.wallBotY - state.wallTopY);
+        const leftX = cx - half;
+        const rightX = cx + half;
+        if (ball.x < leftX) {
+          ball.x = leftX;
+          // Reflect: the outward normal points up-left along the wall.
+          // Reduce vx (outward) and add a bit of inward push; also slow vy slightly.
+          if (ball.vx < 0) ball.vx = -ball.vx * 0.35;
+          ball.vx += slope * ball.vy * 0.6; // redirect along wall
+        } else if (ball.x > rightX) {
+          ball.x = rightX;
+          if (ball.vx > 0) ball.vx = -ball.vx * 0.35;
+          ball.vx -= slope * ball.vy * 0.6;
+        }
+      }
+
+      // Absolute safety bounds (should never hit these now)
       if (ball.x < 4) { ball.x = 4; ball.vx = Math.abs(ball.vx); }
       if (ball.x > state.W - 4) { ball.x = state.W - 4; ball.vx = -Math.abs(ball.vx); }
     }
@@ -647,26 +686,54 @@
     // Draw bins
     drawBins();
 
+    // Draw the triangular funnel/walls (behind pegs and balls)
+    drawFunnel();
+
     // Draw pegs
     drawPegs();
 
     // Draw balls
     drawBalls();
-
-    // Draw funnel at top
-    drawFunnel();
   }
 
   function drawFunnel() {
     const cx = state.W / 2;
-    const y = state.spawnY;
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    const topY = state.wallTopY;
+    const botY = state.wallBotY;
+    const topH = state.wallTopHalfW;
+    const botH = state.wallBotHalfW;
+
+    // Soft glass-like fill inside the triangle
+    const grad = ctx.createLinearGradient(0, topY, 0, botY);
+    grad.addColorStop(0, 'rgba(122, 211, 255, 0.03)');
+    grad.addColorStop(1, 'rgba(255, 200, 87, 0.04)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(cx - topH, topY);
+    ctx.lineTo(cx + topH, topY);
+    ctx.lineTo(cx + botH, botY);
+    ctx.lineTo(cx - botH, botY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Slanted wall lines
+    ctx.strokeStyle = 'rgba(201, 205, 224, 0.22)';
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.moveTo(cx - topH, topY);
+    ctx.lineTo(cx - botH, botY);
+    ctx.moveTo(cx + topH, topY);
+    ctx.lineTo(cx + botH, botY);
+    ctx.stroke();
+
+    // Funnel chevron above the neck
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(cx - 24, y - 18);
-    ctx.lineTo(cx - 6, y + 2);
-    ctx.moveTo(cx + 24, y - 18);
-    ctx.lineTo(cx + 6, y + 2);
+    ctx.moveTo(cx - 24, topY - 18);
+    ctx.lineTo(cx - topH, topY);
+    ctx.moveTo(cx + 24, topY - 18);
+    ctx.lineTo(cx + topH, topY);
     ctx.stroke();
   }
 
